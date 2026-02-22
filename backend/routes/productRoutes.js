@@ -84,4 +84,33 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// UPDATE an existing product
+router.put('/:id', upload.array('images', 6), async (req, res) => {
+    try {
+        const { title, serialNo, price, originalPrice, category, description, inventory } = req.body;
+
+        // 1. Check if another product already uses this serialNo
+        const existingProduct = await Product.findOne({ serialNo, _id: { $ne: req.params.id } });
+        if (existingProduct) {
+            return res.status(400).json({ message: 'This Serial Number is already assigned to another product.' });
+        }
+
+        const updateData = {
+            title, serialNo, price, originalPrice, category, description,
+            inventory: JSON.parse(inventory)
+        };
+
+        // 2. Only update the images if the admin uploaded new ones
+        if (req.files && req.files.length > 0) {
+            updateData.images = req.files.map(file => `http://localhost:5000/uploads/${file.filename}`);
+        }
+
+        // 3. Save the updates
+        const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
+        res.status(200).json(updatedProduct);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 module.exports = router;

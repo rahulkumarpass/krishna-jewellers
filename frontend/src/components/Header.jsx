@@ -1,47 +1,94 @@
-import React from 'react';
-import { Search, User, Heart, ShoppingCart } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Search, User, Heart, ShoppingCart, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Header = () => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const navigate = useNavigate();
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        if (searchTerm.trim()) {
+            navigate(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+        }
+    };
+
+    const clearSearch = () => {
+        setSearchTerm('');
+    };
+
     return (
-        <header className="bg-brandBlue py-3 sticky top-0 z-50 shadow-md">
-            <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <header className="bg-brandBlue text-white sticky top-0 z-50 shadow-md">
+            <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
 
                 {/* Logo */}
-                <Link to="/" className="text-white text-xl md:text-2xl font-bold tracking-wide">
-                    Krishna Jewelry and Readymade
+                <Link to="/" className="text-xl md:text-2xl font-bold whitespace-nowrap">
+                    Krishna Jewelry
                 </Link>
 
-                {/* Search Bar */}
-                <div className="flex w-full md:max-w-xl bg-white rounded-sm shadow-sm overflow-hidden">
+                {/* Desktop Search Bar */}
+                <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-2xl relative">
                     <input
                         type="text"
-                        placeholder="Search for products, brands and more"
-                        className="w-full px-4 py-2 outline-none text-sm text-gray-700"
+                        placeholder="Search for products, brands and more..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full py-2.5 pl-4 pr-24 rounded-sm text-gray-800 focus:outline-none shadow-sm"
                     />
-                    <button className="px-4 text-brandBlue bg-white flex items-center justify-center hover:bg-gray-50 cursor-pointer">
+
+                    {/* Cancel (X) Button - Only shows if there is text */}
+                    {searchTerm && (
+                        <button
+                            type="button"
+                            onClick={clearSearch}
+                            className="absolute right-14 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                        >
+                            <X size={18} />
+                        </button>
+                    )}
+
+                    {/* Search Icon Button */}
+                    <button
+                        type="submit"
+                        className="absolute right-0 top-0 h-full px-4 bg-blue-700 hover:bg-blue-800 text-white rounded-r-sm transition-colors cursor-pointer flex items-center justify-center"
+                    >
                         <Search size={20} />
                     </button>
-                </div>
+                </form>
 
-                {/* Navigation Links */}
-                <div className="flex items-center gap-6 text-white font-medium text-sm">
-                    {/* Login - Visually Disabled */}
-                    <span className="flex items-center gap-1 opacity-50 cursor-not-allowed" title="Login is currently disabled">
-                        <User size={18} /> Login
-                    </span>
-
-                    {/* Wishlist */}
-                    <Link to="/wishlist" className="flex items-center gap-1 hover:opacity-80">
-                        <Heart size={18} /> Wishlist
+                {/* Icons */}
+                <div className="flex items-center gap-6 text-sm font-medium">
+                    <Link to="/admin" className="flex items-center gap-1 hover:text-blue-100 transition-colors">
+                        <User size={18} /> <span className="hidden sm:block">Login</span>
                     </Link>
-
-                    {/* Cart - Visually Disabled */}
-                    <span className="flex items-center gap-1 opacity-50 cursor-not-allowed" title="Cart is currently disabled">
-                        <ShoppingCart size={18} /> Cart
-                    </span>
+                    <Link to="/wishlist" className="flex items-center gap-1 hover:text-blue-100 transition-colors">
+                        <Heart size={18} /> <span className="hidden sm:block">Wishlist</span>
+                    </Link>
+                    <Link to="/cart" className="flex items-center gap-1 hover:text-blue-100 transition-colors">
+                        <ShoppingCart size={18} /> <span className="hidden sm:block">Cart</span>
+                    </Link>
                 </div>
+            </div>
 
+            {/* Mobile Search - shows only on small screens */}
+            <div className="md:hidden px-4 pb-3">
+                <form onSubmit={handleSearch} className="flex w-full relative">
+                    <input
+                        type="text"
+                        placeholder="Search products..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full py-2 pl-4 pr-20 rounded-sm text-gray-800 focus:outline-none shadow-sm"
+                    />
+                    {searchTerm && (
+                        <button type="button" onClick={clearSearch} className="absolute right-12 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500">
+                            <X size={18} />
+                        </button>
+                    )}
+                    <button type="submit" className="absolute right-0 top-0 h-full px-3 bg-blue-700 hover:bg-blue-800 text-white rounded-r-sm flex items-center justify-center cursor-pointer">
+                        <Search size={18} />
+                    </button>
+                </form>
             </div>
         </header>
     );

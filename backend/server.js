@@ -31,7 +31,7 @@ app.post('/api/admin/login', (req, res) => {
 
 // --- NEW: USE PRODUCT ROUTES ---
 app.use('/api/products', require('./routes/productRoutes'));
-
+app.use('/api/settings', require('./routes/settingsRoutes'));
 // Basic route to test if server is alive
 app.get('/', (req, res) => {
   res.send('Krishna Jewelry and Readymade API is running...');

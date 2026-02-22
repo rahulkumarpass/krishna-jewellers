@@ -1,48 +1,108 @@
-import React from 'react';
-import ProductCard from './ProductCard'; // We are keeping the great product cards!
+import React, { useState, useEffect } from 'react';
+import ProductCard from './ProductCard';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 const ProductGrid = () => {
-    // Temporary data until we connect to your Node.js backend
-    const products = [
-        {
-            id: 1,
-            title: "Men's Premium Checked Shirt",
-            image: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=600&auto=format&fit=crop",
-            price: 499, originalPrice: 999, discount: 50, rating: 4.4
-        },
-        {
-            id: 2,
-            title: "Gold Plated Bridal Necklace",
-            image: "https://images.unsplash.com/photo-1599643478524-fb66ba45363b?q=80&w=600&auto=format&fit=crop",
-            price: 1299, originalPrice: 2599, discount: 50, rating: 4.8
-        },
-        {
-            id: 3,
-            title: "Women's Casual Denim Jacket",
-            image: "https://images.unsplash.com/photo-1544441893-675973e31985?q=80&w=600&auto=format&fit=crop",
-            price: 899, originalPrice: 1499, discount: 40, rating: 4.5
-        },
-        {
-            id: 4,
-            title: "Designer Black Sunglasses",
-            image: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=600&auto=format&fit=crop",
-            price: 449, originalPrice: 699, discount: 35, rating: 4.3
-        },
-    ];
+    const [allProducts, setAllProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // State to track which filter tab is currently clicked
+    const [activeCategory, setActiveCategory] = useState('All');
+
+    // The categories that will appear as filter buttons
+    const categories = ['All', "Men's Wear", "Women's Wear", "Kids Wear", "Accessories"];
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/products');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch products');
+                }
+                const data = await response.json();
+
+                const formattedProducts = data.map(item => ({
+                    id: item._id,
+                    title: item.title,
+                    category: item.category, // We need this to filter them locally!
+                    image: item.images && item.images.length > 0 ? item.images[0] : 'https://via.placeholder.com/600',
+                    price: item.price,
+                    originalPrice: item.originalPrice,
+                    discount: item.discount,
+                    rating: item.rating || 4.5
+                }));
+
+                setAllProducts(formattedProducts);
+                setLoading(false);
+            } catch (err) {
+                console.error("Error fetching products:", err);
+                setError("Could not load products at this time.");
+                setLoading(false);
+            }
+        };
+
+        fetchProducts();
+    }, []);
+
+    // Filter the products before rendering them based on the active tab
+    const displayedProducts = activeCategory === 'All'
+        ? allProducts
+        : allProducts.filter(product => product.category === activeCategory);
 
     return (
         <section className="my-10 bg-white p-6 shadow-sm rounded-sm">
-            {/* Clean, simple section header without the timer */}
-            <div className="border-b border-gray-100 pb-4 mb-8">
-                <h2 className="text-3xl font-normal text-gray-800 text-center">Explore Our Collection</h2>
+            <div className="border-b border-gray-100 pb-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <h2 className="text-3xl font-normal text-gray-800">Explore Our Collection</h2>
+
+                {/* --- DYNAMIC FILTER TABS --- */}
+                <div className="flex overflow-x-auto pb-2 md:pb-0 gap-2 hide-scrollbar">
+                    {categories.map((cat) => (
+                        <button
+                            key={cat}
+                            onClick={() => setActiveCategory(cat)}
+                            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer ${activeCategory === cat
+                                    ? 'bg-brandBlue text-white shadow-md'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Product Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {products.map(product => (
-                    <ProductCard key={product.id} product={product} />
-                ))}
-            </div>
+            {/* Loading State */}
+            {loading && (
+                <div className="flex flex-col items-center justify-center py-10 text-brandBlue">
+                    <Loader2 size={40} className="animate-spin mb-4" />
+                    <p className="font-medium text-gray-600">Loading latest collections...</p>
+                </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+                <div className="flex flex-col items-center justify-center py-10 text-red-500">
+                    <AlertCircle size={40} className="mb-4" />
+                    <p className="font-medium">{error}</p>
+                </div>
+            )}
+
+            {/* Empty State */}
+            {!loading && !error && displayedProducts.length === 0 && (
+                <div className="text-center py-16">
+                    <p className="text-gray-500 text-lg">No products available in <strong>{activeCategory}</strong> right now.</p>
+                </div>
+            )}
+
+            {/* Real Product Grid */}
+            {!loading && !error && displayedProducts.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {displayedProducts.map(product => (
+                        <ProductCard key={product.id} product={product} />
+                    ))}
+                </div>
+            )}
         </section>
     );
 };
