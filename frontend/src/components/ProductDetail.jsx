@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Navigation } from 'swiper/modules';
-import { MessageCircle, MapPin, Phone, CheckCircle2, XCircle, Loader2, Clock, Heart, AlertCircle, ArrowLeft } from 'lucide-react';
+import { MessageCircle, MapPin, Phone, CheckCircle2, XCircle, Loader2, Clock, Heart, AlertCircle, ArrowLeft, User } from 'lucide-react';
 
 import 'swiper/css';
 import 'swiper/css/pagination';
@@ -10,9 +10,13 @@ import 'swiper/css/navigation';
 
 const ProductDetail = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
+
+    // Check if a user is currently logged in
+    const currentUser = JSON.parse(localStorage.getItem('krishna_user'));
 
     const [product, setProduct] = useState(null);
-    const [shopSettings, setShopSettings] = useState(null); // <-- NEW: State for settings
+    const [shopSettings, setShopSettings] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -131,15 +135,14 @@ const ProductDetail = () => {
             <div className="flex flex-col items-center justify-center py-20 text-red-500 min-h-[50vh]">
                 <AlertCircle size={48} className="mb-4" />
                 <p className="font-medium text-lg mb-6">{error || "Product not found"}</p>
-                <Link to="/" className="bg-brandBlue text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm">
+                <Link to="/" className="bg-brandBlue text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm cursor-pointer">
                     <ArrowLeft size={18} /> Back to Home
                 </Link>
             </div>
         );
     }
 
-    // --- USE DYNAMIC SHOP DATA ---
-    // Grab the first owner's phone number. If none exists, fallback to dummy data.
+    // Use dynamic shop data
     const shopPhone = shopSettings?.owners?.[0]?.phone || "919876543210";
     const displayAddress = shopSettings?.address || "X8MM+3VW, Kurhani, Bihar 844120";
 
@@ -150,6 +153,7 @@ const ProductDetail = () => {
     return (
         <div className="bg-white p-4 md:p-8 rounded-xl shadow-sm border border-gray-100 my-6 flex flex-col md:flex-row gap-8">
 
+            {/* Left Column - Images */}
             <div className="w-full md:w-5/12">
                 <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 shadow-sm">
                     {product.images && product.images.length > 0 ? (
@@ -168,6 +172,7 @@ const ProductDetail = () => {
                 </div>
             </div>
 
+            {/* Right Column - Product Details */}
             <div className="w-full md:w-7/12 flex flex-col">
                 <h1 className="text-2xl md:text-3xl font-semibold text-gray-800 mb-2">{product.title}</h1>
                 <p className="text-sm text-gray-500 mb-4">Serial No: <span className="font-bold text-gray-800">{product.serialNo}</span></p>
@@ -182,6 +187,7 @@ const ProductDetail = () => {
                     <span className="text-lg text-green-600 font-semibold mb-1">{product.discount}% off</span>
                 </div>
 
+                {/* Delivery Location Check */}
                 <div className={`mb-6 p-4 rounded-lg border flex flex-col gap-2 transition-colors shadow-sm ${deliveryStatus === 'success' ? 'bg-green-50 border-green-200' :
                         deliveryStatus === 'out-of-range' ? 'bg-red-50 border-red-200' :
                             'bg-blue-50 border-blue-100'
@@ -231,6 +237,7 @@ const ProductDetail = () => {
                     )}
                 </div>
 
+                {/* Sizes and Inventory */}
                 {product.inventory && product.inventory.length > 0 && (
                     <div className="mb-6">
                         <h3 className="font-semibold text-gray-800 mb-3">Available Sizes & Quantity</h3>
@@ -259,8 +266,18 @@ const ProductDetail = () => {
                     <Heart size={20} /> Add to Wishlist
                 </button>
 
+                {/* AUTH PROTECTED CONTACT SECTION */}
                 <div className="flex flex-col sm:flex-row gap-4 mt-auto">
-                    {isContactable ? (
+                    {!currentUser ? (
+                        // IF NOT LOGGED IN: Show the Login Prompt
+                        <button
+                            onClick={() => navigate('/login')}
+                            className="w-full bg-brandBlue text-white py-3.5 rounded-lg font-medium text-base flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-sm cursor-pointer hover:shadow-md"
+                        >
+                            <User size={20} /> Login to Place Order
+                        </button>
+                    ) : isContactable ? (
+                        // IF LOGGED IN AND OPEN: Show Contact Options
                         <>
                             <a href={`https://wa.me/${shopPhone}?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer" className="flex-1 bg-[#25D366] text-white py-3.5 rounded-lg font-medium text-base flex items-center justify-center gap-2 hover:bg-[#128C7E] transition-all shadow-sm cursor-pointer hover:shadow-md">
                                 <MessageCircle size={20} /> Chat on WhatsApp
@@ -270,9 +287,10 @@ const ProductDetail = () => {
                             </a>
                         </>
                     ) : (
-                        <div className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-3.5 rounded-lg font-medium text-base flex flex-col items-center justify-center cursor-not-allowed shadow-inner">
+                        // IF LOGGED IN BUT CLOSED
+                        <div className="w-full bg-gray-50 border border-gray-200 text-gray-500 py-3.5 rounded-lg font-medium text-base flex flex-col items-center justify-center shadow-inner cursor-not-allowed">
                             <span className="flex items-center gap-2 text-gray-700"><Clock size={18} /> Currently Closed</span>
-                            <span className="text-xs mt-1 font-normal text-gray-500">Contact options are available between 8:00 AM and 8:00 PM</span>
+                            <span className="text-xs mt-1 font-normal text-gray-500">Contact options available between 8 AM - 8 PM</span>
                         </div>
                     )}
                 </div>
@@ -286,7 +304,7 @@ const ProductDetail = () => {
                         {displayAddress}
                     </p>
                     <div className="w-full h-48 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3590.871026049444!2d85.3402777!3d25.8407481!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39ed670014023249%3A0x6b677a8cb4cc7b5!2sKurhani%2C%20Bihar%20844120!5e0!3m2!1sen!2sin!4v1710000000000!5m2!1sen!2sin" width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Shop Location Map"></iframe>
+                        <iframe src="https://maps.google.com/maps?q=25.98,85.33&hl=es;z=14&amp;output=embed" width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Shop Location Map"></iframe>
                     </div>
                 </div>
 

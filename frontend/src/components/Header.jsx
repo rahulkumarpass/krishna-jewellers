@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
-import { Search, User, Heart, ShoppingCart, X } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Search, User, Heart, ShoppingCart, X, LogOut } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 const Header = () => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentUser, setCurrentUser] = useState(null);
+
     const navigate = useNavigate();
+    const location = useLocation(); // This helps us detect when the user changes pages
+
+    // Every time the URL changes (like after logging in), check if a user exists
+    useEffect(() => {
+        const userString = localStorage.getItem('krishna_user');
+        if (userString) {
+            setCurrentUser(JSON.parse(userString));
+        } else {
+            setCurrentUser(null);
+        }
+    }, [location]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -15,6 +28,12 @@ const Header = () => {
 
     const clearSearch = () => {
         setSearchTerm('');
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('krishna_user');
+        setCurrentUser(null);
+        navigate('/'); // Send them back to the homepage
     };
 
     return (
@@ -36,7 +55,7 @@ const Header = () => {
                         className="w-full py-2.5 pl-4 pr-24 rounded-sm text-gray-800 focus:outline-none shadow-sm"
                     />
 
-                    {/* Cancel (X) Button - Only shows if there is text */}
+                    {/* Cancel (X) Button */}
                     {searchTerm && (
                         <button
                             type="button"
@@ -56,11 +75,33 @@ const Header = () => {
                     </button>
                 </form>
 
-                {/* Icons */}
-                <div className="flex items-center gap-6 text-sm font-medium">
-                    <Link to="/admin" className="flex items-center gap-1 hover:text-blue-100 transition-colors">
-                        <User size={18} /> <span className="hidden sm:block">Login</span>
-                    </Link>
+                {/* Navigation Icons */}
+                <div className="flex items-center gap-5 sm:gap-6 text-sm font-medium">
+
+                    {/* Dynamic User/Login Section */}
+                    {currentUser ? (
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1 text-blue-100" title={currentUser.name}>
+                                <User size={18} />
+                                <span className="hidden sm:block truncate max-w-[80px]">
+                                    {/* Just show their first name to save space */}
+                                    {currentUser.name.split(' ')[0]}
+                                </span>
+                            </div>
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center gap-1 text-blue-200 hover:text-white transition-colors cursor-pointer"
+                                title="Logout"
+                            >
+                                <LogOut size={18} />
+                            </button>
+                        </div>
+                    ) : (
+                        <Link to="/login" className="flex items-center gap-1 hover:text-blue-100 transition-colors">
+                            <User size={18} /> <span className="hidden sm:block">Login</span>
+                        </Link>
+                    )}
+
                     <Link to="/wishlist" className="flex items-center gap-1 hover:text-blue-100 transition-colors">
                         <Heart size={18} /> <span className="hidden sm:block">Wishlist</span>
                     </Link>
