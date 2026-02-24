@@ -11,6 +11,7 @@ import Wishlist from './components/Wishlist';
 import ContactUs from './components/ContactUs';
 import Login from './components/Login';
 import AdminLogin from './components/AdminLogin';
+import Cart from './components/Cart';
 import AdminDashboard from './components/AdminDashboard';
 import Footer from './components/Footer';
 
@@ -45,6 +46,7 @@ function App() {
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/cart" element={<Cart />} />
           </Routes>
         </main>
 
