@@ -6,10 +6,17 @@ import ProductCard from './ProductCard';
 const Wishlist = () => {
     const [wishlistItems, setWishlistItems] = useState([]);
 
-    // Load items from localStorage when the page opens
+    // === UPDATED: Auto-sync wishlist so it instantly updates if you click the heart OR the trash can! ===
     useEffect(() => {
-        const savedWishlist = JSON.parse(localStorage.getItem('krishna_wishlist')) || [];
-        setWishlistItems(savedWishlist);
+        const syncWishlist = () => {
+            const savedWishlist = JSON.parse(localStorage.getItem('krishna_wishlist')) || [];
+            setWishlistItems(savedWishlist);
+        };
+
+        syncWishlist(); // Run immediately
+        const interval = setInterval(syncWishlist, 500); // Check every half-second
+
+        return () => clearInterval(interval);
     }, []);
 
     // Function to remove an item from the wishlist

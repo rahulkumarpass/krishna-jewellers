@@ -10,11 +10,6 @@ const Footer = () => {
 
                 <div className="w-full md:w-1/2 mt-6 pt-4 border-t border-gray-700 flex justify-between items-center text-xs text-gray-500">
                     <p>&copy; {new Date().getFullYear()} All rights reserved.</p>
-
-                    {/* Subtle Admin Login Link */}
-                    <Link to="/admin" className="hover:text-white transition-colors cursor-pointer">
-                        Admin Login
-                    </Link>
                 </div>
             </div>
         </footer>

@@ -1,10 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageCircle, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const ProductCard = ({ product }) => {
+  // === NEW: State to remember if the item is saved ===
+  const [isSaved, setIsSaved] = useState(false);
 
-  // Save item to localStorage Wishlist
+  // === NEW: Check localStorage when the card loads ===
+  useEffect(() => {
+    const currentWishlist = JSON.parse(localStorage.getItem('krishna_wishlist')) || [];
+    const exists = currentWishlist.some(item => item.id === product.id);
+    setIsSaved(exists);
+  }, [product.id]);
+
+  // === UPDATED: Toggle wishlist logic ===
   const handleWishlist = (e) => {
     e.preventDefault();
 
@@ -12,11 +21,15 @@ const ProductCard = ({ product }) => {
     const exists = currentWishlist.find(item => item.id === product.id);
 
     if (!exists) {
+      // Add it to wishlist
       currentWishlist.push(product);
       localStorage.setItem('krishna_wishlist', JSON.stringify(currentWishlist));
-      alert(`${product.title} added to wishlist!`);
+      setIsSaved(true); // Turn heart red!
     } else {
-      alert(`${product.title} is already in your wishlist!`);
+      // Remove it from wishlist if clicked again
+      const updatedWishlist = currentWishlist.filter(item => item.id !== product.id);
+      localStorage.setItem('krishna_wishlist', JSON.stringify(updatedWishlist));
+      setIsSaved(false); // Turn heart back to normal
     }
   };
 
@@ -36,14 +49,18 @@ const ProductCard = ({ product }) => {
         {/* Floating Add to Wishlist Button */}
         <button
           onClick={handleWishlist}
-          className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors z-10 cursor-pointer"
-          title="Add to Wishlist"
+          className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md transition-all z-10 cursor-pointer hover:scale-110"
+          title={isSaved ? "Remove from Wishlist" : "Add to Wishlist"}
         >
-          <Heart size={18} />
+          {/* === UPDATED: Heart color logic === */}
+          <Heart
+            size={18}
+            className={isSaved ? "text-red-500 fill-current" : "text-gray-400 hover:text-red-500"}
+          />
         </button>
       </div>
 
-      {/* Product Details */}
+      {/* Product Details (Kept exactly as you designed it) */}
       <div className="p-4 flex flex-col flex-grow">
         <div className="flex items-center gap-1 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded-sm w-max mb-2">
           {product.rating} ★

@@ -1,44 +1,51 @@
+require('dotenv').config(); // Allows you to use .env files for passwords and secret keys
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
+
+// === 1. ADD THIS LINE ===
 const path = require('path');
-require('dotenv').config();
 
 const app = express();
-
-// Middleware
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors());
+// Allows your server to read JSON data from frontend requests
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// IMPORTANT: This allows React to view the images inside the /uploads folder
+// === 2. ADD THIS LINE ===
+// This exposes your 'uploads' folder to the internet so React can see the photos!
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Database Connection
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ Connected to MongoDB Database'))
-  .catch((err) => console.log('❌ Database connection error:', err));
 
-// Secure Admin Login API
-app.post('/api/admin/login', (req, res) => {
-  const { email, password } = req.body;
-  if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-    res.status(200).json({ message: 'Login successful', isAdmin: true });
-  } else {
-    res.status(401).json({ message: 'Invalid admin credentials' });
-  }
+// === 2. SECURITY: RATE LIMITER ===
+// Protects your email OTP system from being spammed by bots
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour in milliseconds
+  max: 20, // Limit each IP to exactly 20 requests per hour
+  message: {
+    message: "Too many login or signup attempts from this IP. To protect our system, please try again in exactly one hour."
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-// --- NEW: USE PRODUCT ROUTES ---
+// We apply the 'authLimiter' strictly to the /api/auth route so it doesn't block product browsing!
+app.use('/api/auth', authLimiter, require('./routes/authRoutes'));
 app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
-// Basic route to test if server is alive
-app.get('/', (req, res) => {
-  res.send('Krishna Jewelry and Readymade API is running...');
-});
 
-// Start the server
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/krishna_jewellers';
+
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('✅ Connected to MongoDB successfully!');
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err);
+  });
+
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
-  console.log(`🚀 Backend Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Backend server is running on http://localhost:${PORT}`);
 });

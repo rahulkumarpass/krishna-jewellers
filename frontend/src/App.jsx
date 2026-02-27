@@ -44,7 +44,7 @@ function App() {
 
             {/* Secure Admin Routes */}
             <Route path="/admin" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/sarraf-login-2019" element={<AdminDashboard />} />
             <Route path="/login" element={<Login />} />
             <Route path="/cart" element={<Cart />} />
           </Routes>

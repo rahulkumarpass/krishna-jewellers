@@ -2,30 +2,45 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Navigation } from 'swiper/modules';
-import { MessageCircle, MapPin, Phone, CheckCircle2, XCircle, Loader2, Clock, Heart, AlertCircle, ArrowLeft, User, ShoppingCart } from 'lucide-react';
+import { MessageCircle, MapPin, Phone, CheckCircle2, XCircle, Loader2, Clock, Heart, AlertCircle, User, ShoppingCart } from 'lucide-react';
+
+// === 1. IMPORT GOOGLE MAPS ===
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
 
+// === 2. SET UP MAP SETTINGS ===
+const mapContainerStyle = {
+    width: '100%',
+    height: '100%'
+};
+// Krishna Jewelry Coordinates
+const shopLocation = {
+    lat: 25.98,
+    lng: 85.33
+};
+
 const ProductDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-
-    // Check if a user is currently logged in
     const currentUser = JSON.parse(localStorage.getItem('krishna_user'));
 
     const [product, setProduct] = useState(null);
     const [shopSettings, setShopSettings] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    // State for selected size
     const [selectedSize, setSelectedSize] = useState(null);
-
-    // States for delivery checking
     const [deliveryStatus, setDeliveryStatus] = useState('idle');
     const [distance, setDistance] = useState(null);
+    const [isInWishlist, setIsInWishlist] = useState(false);
+
+    // === 3. INITIALIZE GOOGLE MAPS API ===
+    const { isLoaded: isMapLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY // Loads from your .env file!
+    });
 
     useEffect(() => {
         const fetchData = async () => {
@@ -35,11 +50,14 @@ const ProductDetail = () => {
                 const productData = await productRes.json();
                 setProduct(productData);
 
-                // Auto-select the first available size if inventory exists
                 if (productData.inventory && productData.inventory.length > 0) {
                     const availableSize = productData.inventory.find(i => i.quantity > 0);
                     if (availableSize) setSelectedSize(availableSize.size);
                 }
+
+                const currentWishlist = JSON.parse(localStorage.getItem('krishna_wishlist')) || [];
+                const exists = currentWishlist.some(item => item.id === productData._id);
+                setIsInWishlist(exists);
 
                 const settingsRes = await fetch('http://localhost:5000/api/settings');
                 if (settingsRes.ok) {
@@ -55,9 +73,8 @@ const ProductDetail = () => {
         fetchData();
     }, [id]);
 
-    // Delivery Location Math
-    const SHOP_LAT = 25.98;
-    const SHOP_LON = 85.33;
+    const SHOP_LAT = shopLocation.lat;
+    const SHOP_LON = shopLocation.lng;
     const MAX_DELIVERY_RADIUS_KM = 5;
 
     const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -84,27 +101,22 @@ const ProductDetail = () => {
         );
     };
 
-    // Add to Cart Logic with Stock Limits
     const handleAddToCart = () => {
         if (!selectedSize) {
             alert("Please select a size first!");
             return;
         }
-
         const currentCart = JSON.parse(localStorage.getItem('krishna_cart')) || [];
         const existingItemIndex = currentCart.findIndex(item => item.id === product._id && item.selectedSize === selectedSize);
-
-        // Find the exact stock limit for the size they selected
         const sizeInfo = product.inventory.find(i => i.size === selectedSize);
         const maxStock = sizeInfo ? sizeInfo.quantity : 0;
 
         if (existingItemIndex >= 0) {
-            // Check if adding one more exceeds the stock limit
             if (currentCart[existingItemIndex].quantity < maxStock) {
                 currentCart[existingItemIndex].quantity += 1;
             } else {
                 alert(`Sorry, you can't add more. We only have ${maxStock} left in this size!`);
-                return; // Stop here so it doesn't save
+                return;
             }
         } else {
             currentCart.push({
@@ -115,10 +127,9 @@ const ProductDetail = () => {
                 price: product.price,
                 selectedSize: selectedSize,
                 quantity: 1,
-                maxQuantity: maxStock // SAVE THE LIMIT TO THE CART
+                maxQuantity: maxStock
             });
         }
-
         localStorage.setItem('krishna_cart', JSON.stringify(currentCart));
         alert(`${product.title} (Size: ${selectedSize}) added to cart!`);
     };
@@ -126,12 +137,14 @@ const ProductDetail = () => {
     const handleWishlist = () => {
         if (!product) return;
         let currentWishlist = JSON.parse(localStorage.getItem('krishna_wishlist')) || [];
-        if (!currentWishlist.find(item => item.id === product._id)) {
+        if (!isInWishlist) {
             currentWishlist.push({ id: product._id, title: product.title, image: product.images?.[0] || '', price: product.price, originalPrice: product.originalPrice, discount: product.discount });
             localStorage.setItem('krishna_wishlist', JSON.stringify(currentWishlist));
-            alert(`${product.title} added to Wishlist!`);
+            setIsInWishlist(true);
         } else {
-            alert(`${product.title} is already in your Wishlist!`);
+            const updatedWishlist = currentWishlist.filter(item => item.id !== product._id);
+            localStorage.setItem('krishna_wishlist', JSON.stringify(updatedWishlist));
+            setIsInWishlist(false);
         }
     };
 
@@ -147,7 +160,6 @@ const ProductDetail = () => {
     return (
         <div className="bg-white p-4 md:p-8 rounded-xl shadow-sm border border-gray-100 my-6 flex flex-col md:flex-row gap-8">
 
-            {/* Left Column - Images */}
             <div className="w-full md:w-5/12">
                 <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 shadow-sm">
                     {product.images?.length > 0 ? (
@@ -162,7 +174,6 @@ const ProductDetail = () => {
                 </div>
             </div>
 
-            {/* Right Column - Product Details */}
             <div className="w-full md:w-7/12 flex flex-col">
                 <h1 className="text-2xl md:text-3xl font-semibold text-gray-800 mb-2">{product.title}</h1>
                 <p className="text-sm text-gray-500 mb-4">Serial No: <span className="font-bold text-gray-800">{product.serialNo}</span></p>
@@ -177,7 +188,6 @@ const ProductDetail = () => {
                     <span className="text-lg text-green-600 font-semibold mb-1">{product.discount}% off</span>
                 </div>
 
-                {/* Delivery Location Check */}
                 <div className={`mb-6 p-4 rounded-lg border flex flex-col gap-2 transition-colors shadow-sm ${deliveryStatus === 'success' ? 'bg-green-50 border-green-200' :
                         deliveryStatus === 'out-of-range' ? 'bg-red-50 border-red-200' :
                             'bg-blue-50 border-blue-100'
@@ -227,7 +237,6 @@ const ProductDetail = () => {
                     )}
                 </div>
 
-                {/* INTERACTIVE SIZES */}
                 {product.inventory && product.inventory.length > 0 && (
                     <div className="mb-6">
                         <h3 className="font-semibold text-gray-800 mb-3">Select Size</h3>
@@ -258,17 +267,23 @@ const ProductDetail = () => {
                     <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">{product.description}</p>
                 </div>
 
-                {/* CART & WISHLIST BUTTONS */}
                 <div className="flex flex-col sm:flex-row gap-4 mb-6">
                     <button onClick={handleAddToCart} className="flex-1 bg-brandBlue text-white py-3.5 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md cursor-pointer">
                         <ShoppingCart size={20} /> Add to Cart
                     </button>
-                    <button onClick={handleWishlist} className="sm:w-1/3 bg-red-50 border border-red-200 text-red-500 py-3.5 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-red-100 transition-all shadow-sm cursor-pointer">
-                        <Heart size={20} /> Wishlist
+
+                    <button
+                        onClick={handleWishlist}
+                        className={`sm:w-1/3 py-3.5 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer ${isInWishlist
+                                ? 'bg-red-500 text-white hover:bg-red-600 border border-red-500'
+                                : 'bg-red-50 border border-red-200 text-red-500 hover:bg-red-100'
+                            }`}
+                    >
+                        <Heart size={20} className={isInWishlist ? "fill-current" : ""} />
+                        {isInWishlist ? 'Saved' : 'Wishlist'}
                     </button>
                 </div>
 
-                {/* AUTH PROTECTED CONTACT BUTTONS */}
                 <div className="flex flex-col sm:flex-row gap-4">
                     {!currentUser ? (
                         <button onClick={() => navigate('/login')} className="w-full bg-gray-800 text-white py-3.5 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-gray-900 transition-all shadow-sm cursor-pointer">
@@ -290,7 +305,7 @@ const ProductDetail = () => {
                     )}
                 </div>
 
-                {/* Shop Location Map */}
+                {/* === 4. NEW GOOGLE MAPS INTEGRATION === */}
                 <div className="mt-10 pt-6 border-t border-gray-100">
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
                         <MapPin size={20} className="text-brandBlue" /> Shop Location
@@ -299,8 +314,27 @@ const ProductDetail = () => {
                         <strong>Krishna Jewelry and Readymade</strong><br />
                         {displayAddress}
                     </p>
-                    <div className="w-full h-48 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                        <iframe src="https://maps.google.com/maps?q=25.98,85.33&hl=en&z=14&output=embed" width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Shop Location Map"></iframe>
+
+                    <div className="w-full h-64 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm relative">
+                        {isMapLoaded ? (
+                            <GoogleMap
+                                mapContainerStyle={mapContainerStyle}
+                                center={shopLocation}
+                                zoom={15}
+                                options={{
+                                    disableDefaultUI: false, // Allows users to use street view, zoom, etc.
+                                    zoomControl: true,
+                                }}
+                            >
+                                {/* A red marker showing exactly where your shop is */}
+                                <Marker position={shopLocation} title="Krishna Jewelry and Readymade" />
+                            </GoogleMap>
+                        ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 gap-2">
+                                <Loader2 size={28} className="animate-spin text-brandBlue" />
+                                <span className="text-sm font-medium">Loading Interactive Map...</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 

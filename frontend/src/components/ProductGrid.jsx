@@ -1,109 +1,132 @@
 import React, { useState, useEffect } from 'react';
-import ProductCard from './ProductCard';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Heart, Loader2, AlertCircle } from 'lucide-react';
 
 const ProductGrid = () => {
-    const [allProducts, setAllProducts] = useState([]);
+    const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // State to track which filter tab is currently clicked
-    const [activeCategory, setActiveCategory] = useState('All');
-
-    // The categories that will appear as filter buttons
-    const categories = ['All', "Men's Wear", "Women's Wear", "Kids Wear", "Accessories"];
+    // === NEW: Memory to track saved items ===
+    const [savedItemIds, setSavedItemIds] = useState([]);
 
     useEffect(() => {
         const fetchProducts = async () => {
             try {
                 const response = await fetch('http://localhost:5000/api/products');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch products');
-                }
+                if (!response.ok) throw new Error('Failed to fetch products');
                 const data = await response.json();
-
-                const formattedProducts = data.map(item => ({
-                    id: item._id,
-                    title: item.title,
-                    category: item.category, // We need this to filter them locally!
-                    image: item.images && item.images.length > 0 ? item.images[0] : 'https://via.placeholder.com/600',
-                    price: item.price,
-                    originalPrice: item.originalPrice,
-                    discount: item.discount,
-                    rating: item.rating || 4.5
-                }));
-
-                setAllProducts(formattedProducts);
+                setProducts(data);
                 setLoading(false);
             } catch (err) {
-                console.error("Error fetching products:", err);
-                setError("Could not load products at this time.");
+                setError(err.message);
                 setLoading(false);
             }
         };
-
         fetchProducts();
     }, []);
 
-    // Filter the products before rendering them based on the active tab
-    const displayedProducts = activeCategory === 'All'
-        ? allProducts
-        : allProducts.filter(product => product.category === activeCategory);
+    // === NEW: Auto-sync wishlist memory ===
+    useEffect(() => {
+        const syncWishlist = () => {
+            const currentWishlist = JSON.parse(localStorage.getItem('krishna_wishlist')) || [];
+            setSavedItemIds(currentWishlist.map(item => item.id));
+        };
+        syncWishlist();
+        const interval = setInterval(syncWishlist, 500);
+        return () => clearInterval(interval);
+    }, []);
+
+    // === NEW: Toggle Heart Logic ===
+    const handleToggleWishlist = (e, product) => {
+        e.preventDefault(); // Prevents clicking the card link
+        let currentWishlist = JSON.parse(localStorage.getItem('krishna_wishlist')) || [];
+
+        const exists = currentWishlist.find(item => item.id === product._id);
+
+        if (exists) {
+            // Remove it
+            currentWishlist = currentWishlist.filter(item => item.id !== product._id);
+        } else {
+            // Add it
+            currentWishlist.push({
+                id: product._id,
+                title: product.title,
+                image: product.images?.[0] || 'https://via.placeholder.com/600',
+                price: product.price,
+                originalPrice: product.originalPrice,
+                discount: product.discount
+            });
+        }
+
+        localStorage.setItem('krishna_wishlist', JSON.stringify(currentWishlist));
+        // Force immediate update
+        setSavedItemIds(currentWishlist.map(item => item.id));
+    };
+
+    if (loading) return <div className="flex justify-center py-20 text-brandBlue"><Loader2 size={40} className="animate-spin" /></div>;
+    if (error) return <div className="flex justify-center py-20 text-red-500"><AlertCircle size={40} /> Error: {error}</div>;
 
     return (
-        <section className="my-10 bg-white p-6 shadow-sm rounded-sm">
-            <div className="border-b border-gray-100 pb-4 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h2 className="text-3xl font-normal text-gray-800">Explore Our Collection</h2>
+        <div className="max-w-7xl mx-auto px-4 py-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8 border-b pb-4">Explore Our Collection</h2>
 
-                {/* --- DYNAMIC FILTER TABS --- */}
-                <div className="flex overflow-x-auto pb-2 md:pb-0 gap-2 hide-scrollbar">
-                    {categories.map((cat) => (
-                        <button
-                            key={cat}
-                            onClick={() => setActiveCategory(cat)}
-                            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-colors cursor-pointer ${activeCategory === cat
-                                    ? 'bg-brandBlue text-white shadow-md'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                {products.map((product) => {
+
+                    // Check if this specific product is in the saved memory array
+                    const isSaved = savedItemIds.includes(product._id);
+
+                    return (
+                        <div key={product._id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all group relative flex flex-col">
+
+                            <Link to={`/product/${product._id}`} className="relative h-48 md:h-60 overflow-hidden bg-gray-50 block">
+                                <img
+                                    src={product.images?.[0] || 'https://via.placeholder.com/600'}
+                                    alt={product.title}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                            </Link>
+
+                            {/* === UPDATED HEART BUTTON === */}
+                            <button
+                                onClick={(e) => handleToggleWishlist(e, product)}
+                                className="absolute top-3 right-3 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-sm hover:scale-110 transition-transform cursor-pointer z-10"
+                            >
+                                <Heart
+                                    size={18}
+                                    className={isSaved ? "text-red-500 fill-red-500" : "text-gray-400 hover:text-red-500"}
+                                />
+                            </button>
+
+                            <Link to={`/product/${product._id}`} className="p-4 flex flex-col flex-grow">
+                                {product.rating && (
+                                    <div className="bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded flex items-center gap-1 w-max mb-2">
+                                        {product.rating} ★
+                                    </div>
+                                )}
+
+                                <h3 className="font-medium text-gray-800 text-sm mb-1 truncate">{product.title}</h3>
+
+                                <div className="flex items-center gap-2 mb-3 mt-auto">
+                                    <span className="font-bold text-gray-900">₹{product.price}</span>
+                                    {product.originalPrice && (
+                                        <span className="text-xs text-gray-400 line-through">₹{product.originalPrice}</span>
+                                    )}
+                                    {product.discount && (
+                                        <span className="text-xs font-semibold text-green-600">{product.discount}% off</span>
+                                    )}
+                                </div>
+
+                                <button className="w-full bg-blue-50 text-brandBlue py-2 rounded-lg text-sm font-semibold hover:bg-brandBlue hover:text-white transition-colors">
+                                    View Details
+                                </button>
+                            </Link>
+                        </div>
+                    );
+                })}
             </div>
-
-            {/* Loading State */}
-            {loading && (
-                <div className="flex flex-col items-center justify-center py-10 text-brandBlue">
-                    <Loader2 size={40} className="animate-spin mb-4" />
-                    <p className="font-medium text-gray-600">Loading latest collections...</p>
-                </div>
-            )}
-
-            {/* Error State */}
-            {error && (
-                <div className="flex flex-col items-center justify-center py-10 text-red-500">
-                    <AlertCircle size={40} className="mb-4" />
-                    <p className="font-medium">{error}</p>
-                </div>
-            )}
-
-            {/* Empty State */}
-            {!loading && !error && displayedProducts.length === 0 && (
-                <div className="text-center py-16">
-                    <p className="text-gray-500 text-lg">No products available in <strong>{activeCategory}</strong> right now.</p>
-                </div>
-            )}
-
-            {/* Real Product Grid */}
-            {!loading && !error && displayedProducts.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {displayedProducts.map(product => (
-                        <ProductCard key={product.id} product={product} />
-                    ))}
-                </div>
-            )}
-        </section>
+        </div>
     );
 };
 
